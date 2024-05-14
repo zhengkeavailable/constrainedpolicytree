@@ -320,7 +320,8 @@ std::unique_ptr<Node> find_best_split(const std::vector<flat_set>& sorted_sets,
     std::unique_ptr<Node> best_left_child = nullptr;
     std::unique_ptr<Node> best_right_child = nullptr;
     std::unique_ptr<Node> best_ans_as_leaf = nullptr;
-
+    std::vector<int> best_max_treatment_size;
+    best_max_treatment_size = max_treatment_size;
     for (size_t p = 0; p < num_features; p++) {
       auto right_sorted_sets = sorted_sets; // copy operator
       auto left_sorted_sets = create_sorted_sets(data, true); // empty
@@ -358,22 +359,25 @@ std::unique_ptr<Node> find_best_split(const std::vector<flat_set>& sorted_sets,
         auto left_child = find_best_split(left_sorted_sets, level - 1, split_step, min_node_size, data, sum_array,copied_max_treatment_size);
         copied_max_treatment_size = left_child->max_treatment_size;
         auto right_child = find_best_split(right_sorted_sets, level - 1, split_step, min_node_size, data, sum_array,copied_max_treatment_size);
+        copied_max_treatment_size = right_child->max_treatment_size;
         if ((best_left_child == nullptr) ||
             (left_child->reward + right_child->reward >
               best_left_child->reward + best_right_child->reward)) {
           best_left_child = std::move(left_child);
           best_right_child = std::move(right_child);
           best_n = n;
+          best_max_treatment_size = copied_max_treatment_size;
           best_split_var = p;
           best_split_val = point_bk.get_value(p);
         }
       }
     }
     if (best_left_child == nullptr) {
+      max_treatment_size = best_max_treatment_size;
       return level_zero_learning(sorted_sets, data, max_treatment_size);
     } else {
-      max_treatment_size[best_left_child->action_id] = max_treatment_size[best_left_child->action_id]-(int)best_n;
-      max_treatment_size[best_right_child->action_id] = max_treatment_size[best_right_child->action_id]-((int)num_points-(int)best_n);
+      max_treatment_size = best_max_treatment_size;
+      // some problems there!! if
           // "pruning", the recursive case (same action in both leaves):
       if ((best_left_child->is_leaf() && best_right_child->is_leaf()) &&
               (best_left_child->action_id == best_right_child->action_id)) {
